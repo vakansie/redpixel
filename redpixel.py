@@ -1,6 +1,6 @@
 import tkinter
 import numpy
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 import random
 from time import time, sleep
 
@@ -20,25 +20,34 @@ class Game:
         self.tasks = []
         self.player = None
         self.lost = False
+        self.imgnum = iter([str(x).zfill(4) for x in range(500)])
+        #self.save_canvas()
 
     def game_over(self):
-        if not self.lost:
-        #     for task in self.tasks:
-        #         self.main_canvas.after_cancel(task)
-            self.lost = True
-            print('homnomnom')
-            sleep(3)
+        def exit_game():
             exit()
-            # top = tkinter.Toplevel()
-            # # game.main_canvas.wait_window(top)
+        if not self.lost:
+            self.lost = True
+            self.main_canvas.create_text(250, 250, text="HOMNOMNOM\n     FATALITY", fill="red", font=('Impact 36 bold'))
+            self.main_canvas.after(3000, exit_game)
 
     def spawn_hom(self):
         distance = random.randrange(50, 250)
-        spawn_point = game.player.pos - numpy.array(game.player.dir) * distance
+        dir = unify_vector(numpy.random.uniform(-1, 1, 2))
+        spawn_point = game.player.pos + dir * distance
         self.pos = spawn_point
         Hom(spawn_point[0], spawn_point[1])
         task = self.main_canvas.after(2000, self.spawn_hom)
         self.tasks.append(task)
+
+    def save_canvas(self):
+        imgnum = next(self.imgnum)
+        x = self.main_window.winfo_rootx() + self.main_canvas.winfo_x()
+        y = self.main_window.winfo_rooty() + self.main_canvas.winfo_y()
+        xx = x + self.main_canvas.winfo_width()
+        yy = y + self.main_canvas.winfo_height()
+        ImageGrab.grab(bbox=(x, y, xx, yy)).save(f"images\\redpixel{imgnum}.png")
+        self.tasks.append(self.main_window.after(100, self.save_canvas))
 
 class Player:
     def __init__(self):
@@ -47,6 +56,7 @@ class Player:
         self.dir = numpy.array([0,1], dtype=numpy.float)
         self.cooldown = 5
         self.last_shot = 0
+        self.moving = []
         self.image = game.main_canvas.create_image(20, 20, image=game.player_sprite)
         self.bind_keys()
 
@@ -59,29 +69,28 @@ class Player:
             game.tasks.append(game.main_canvas.after(30, bullet.hit))
             self.last_shot = now
 
-    def up(self):
-        self.dir = [0, -1]
-        self.speed = unify_vector(self.speed + self.dir) * 5
+    def move_player(self, new_direction):
+        self.moving.append(new_direction)
+        if len(self.moving) > 20: self.moving.pop(0)
+        self.dir *= 0
+        for direction in self.moving:
+            self.dir += direction
+        self.dir = unify_vector(self.dir) + numpy.array(new_direction)
+        self.speed = self.dir * 5
         self.pos += self.speed
         game.main_canvas.move(self.image,self.speed[0], self.speed[1])
+
+    def up(self):
+        self.move_player([0, -1])
 
     def left(self):
-        self.dir = [-1, 0]
-        self.speed = unify_vector(self.speed + self.dir) * 5
-        self.pos += self.speed
-        game.main_canvas.move(self.image,self.speed[0], self.speed[1])
+        self.move_player([-1, 0])
 
     def down(self):
-        self.dir = [0, 1]
-        self.speed = unify_vector(self.speed + self.dir) * 5
-        self.pos += self.speed
-        game.main_canvas.move(self.image,self.speed[0], self.speed[1])
+        self.move_player([0, 1])
 
     def right(self):
-        self.dir = [1, 0]
-        self.speed = unify_vector(self.speed + self.dir) * 5
-        self.pos += self.speed
-        game.main_canvas.move(self.image,self.speed[0], self.speed[1])
+        self.move_player([1, 0])
 
     def bind_keys(self):
         game.main_window.bind("w", lambda x: self.up())
