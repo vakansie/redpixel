@@ -1,6 +1,6 @@
 import tkinter
 import numpy
-from PIL import Image, ImageTk, ImageGrab
+from PIL import Image, ImageTk
 import random
 from time import time
 
@@ -25,7 +25,7 @@ class Game:
         self.lost = False
         self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
-        self.save_canvas()
+        #self.save_canvas()
 
     def game_over(self):
         if not self.lost:
