@@ -1,6 +1,6 @@
 import tkinter
 import numpy
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk#, ImageGrab
 import random
 from time import time
 
@@ -25,7 +25,7 @@ class Game:
         self.lost = False
         self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
-        #self.save_canvas()
+        self.save_canvas()
 
     def game_over(self):
         if not self.lost:
@@ -68,9 +68,9 @@ class Game:
 class Player:
 
     def __init__(self):
-        self.pos = numpy.array([20,20], dtype=numpy.float)
-        self.speed = numpy.array([0,0], dtype=numpy.float)
-        self.dir = numpy.array([0,1], dtype=numpy.float)
+        self.pos = numpy.array([20,20], dtype=float)
+        self.speed = numpy.array([0,0], dtype=float)
+        self.dir = numpy.array([0,1], dtype=float)
         self.cooldown = 5
         self.last_shot = 0
         self.moving = []
@@ -122,7 +122,7 @@ class Player:
 
 class Hom:
     def __init__(self, x, y) -> None:
-        self.pos = numpy.array([x,y], dtype=numpy.float)
+        self.pos = numpy.array([x,y], dtype=float)
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.hom_sprite)
         self.move_task = game.main_canvas.after(int(1000 / game.hom_speed_factor), self.move)
         game.enemy_tasks.append(self.move_task)
@@ -160,7 +160,7 @@ class Hom:
 
 class Bullet:
     def __init__(self, x, y) -> None:
-        self.dir_from_player = unify_vector(numpy.array([x,y], dtype=numpy.float) - game.player.pos)
+        self.dir_from_player = unify_vector(numpy.array([x,y], dtype=float) - game.player.pos)
         bullet_pos = game.player.pos + (self.dir_from_player * 10)
         self.image = game.main_canvas.create_rectangle(
             bullet_pos[0],
