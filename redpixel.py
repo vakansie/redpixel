@@ -1,6 +1,6 @@
 import tkinter
 import numpy
-from PIL import Image, ImageTk#, ImageGrab
+from PIL import Image, ImageTk #, ImageGrab
 import random
 from time import time
 
@@ -25,7 +25,7 @@ class Game:
         self.lost = False
         self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
-        self.save_canvas()
+        #self.save_canvas()
 
     def game_over(self):
         if not self.lost:
@@ -44,8 +44,8 @@ class Game:
 
     def spawn_hom(self):
         distance = random.randrange(50, 250)
-        dir = unify_vector(numpy.random.uniform(-1, 1, 2))
-        spawn_point = game.player.pos + dir * distance
+        direction = unify_vector(numpy.random.uniform(-1, 1, 2))
+        spawn_point = game.player.pos + direction * distance
         self.pos = spawn_point
         Hom(spawn_point[0], spawn_point[1])
         spawn_rate = int(max(1500 / game.enemy_spawn_rate*game.enemy_spawn_rate,0.01))
@@ -69,17 +69,18 @@ class Player:
 
     def __init__(self):
         self.pos = numpy.array([20,20], dtype=float)
-        self.speed = numpy.array([0,0], dtype=float)
-        self.dir = numpy.array([0,1], dtype=float)
+        self.dist_to_move = numpy.array([0,0], dtype=float)
+        self.dir = numpy.array([0,0], dtype=float)
         self.cooldown = 5
         self.last_shot = 0
-        self.moving = []
+        self.moving = None
         self.image = game.main_canvas.create_image(20, 20, image=game.player_sprite)
         self.kill_count = 0
         self.spread = 1
         self.bind_keys()
 
     def shoot(self, mouse_pos):
+        if game.lost: return
         now = time()
         if now - self.last_shot > self.cooldown:
             for bullet_num in range(game.player.spread):
@@ -91,27 +92,33 @@ class Player:
 
     def move_player(self, new_direction):
         if game.lost: return
-        self.moving.append(new_direction)
-        if len(self.moving) > 1: self.moving.pop(0)
-        self.dir *= 0
-        for direction in self.moving:
-            self.dir += direction
-        self.dir = unify_vector(self.dir) + numpy.array(new_direction)
-        self.speed = self.dir * 5
-        self.pos += self.speed
-        game.main_canvas.move(self.image,self.speed[0], self.speed[1])
+        # self.moving.append(new_direction)
+        # if len(self.moving) > 1: self.moving.pop(0)
+        #self.dir *= 0
+        # for direction in self.moving:
+        #     self.dir += direction
+        self.dir = unify_vector(self.dir + unify_vector(new_direction))
+        self.dist_to_move = self.dir * 5
+        self.pos += self.dist_to_move
+        game.main_canvas.move(self.image, self.dist_to_move[0], self.dist_to_move[1])
+        self.moving = game.main_canvas.after(30, self.move_player, self.dir)
+
 
     def up(self):
-        self.move_player([0, -1])
+        if self.moving: game.main_canvas.after_cancel(self.moving)
+        self.move_player(numpy.array([0, -1]))
 
     def left(self):
-        self.move_player([-1, 0])
+        if self.moving: game.main_canvas.after_cancel(self.moving)
+        self.move_player(numpy.array([-1, 0]))
 
     def down(self):
-        self.move_player([0, 1])
+        if self.moving: game.main_canvas.after_cancel(self.moving)
+        self.move_player(numpy.array([0, 1]))
 
     def right(self):
-        self.move_player([1, 0])
+        if self.moving: game.main_canvas.after_cancel(self.moving)
+        self.move_player(numpy.array([1, 0]))
 
     def bind_keys(self):
         game.main_window.bind("w", lambda x: self.up())
@@ -133,7 +140,6 @@ class Hom:
             return
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
-
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
         self.hit()
         task = game.main_canvas.after(int(200/game.hom_speed_factor), self.move)
