@@ -67,6 +67,7 @@ class Game:
         self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3} /25')
 
 class Player:
+
     def __init__(self):
         self.pos = numpy.array([20,20], dtype=float)
         self.dist_to_move = numpy.array([0,0], dtype=float)
@@ -75,7 +76,7 @@ class Player:
         self.left_vector = numpy.array([-1, 0])
         self.down_vector = numpy.array([0, 1])
         self.right_vector = numpy.array([1, 0])
-        self.cooldown = 0.5
+        self.cooldown = 1
         self.last_shot = 0
         self.moving = None
         self.image = game.main_canvas.create_image(20, 20, image=game.player_sprite)
@@ -88,9 +89,6 @@ class Player:
         now = time()
         if now - self.last_shot > self.cooldown:
             for bullet_num in range(game.player.spread):
-                # if bullet_num == 0:
-                #     Bullet(mouse_pos.x, mouse_pos.y)
-                #     continue
                 if bullet_num % 2 == 0: bullet_num = (bullet_num // 2) * -1
                 x = math.cos((bullet_num/game.golden_half)) * (mouse_pos.x - game.player.pos[0]) - math.sin((bullet_num/game.golden_half)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
                 y = math.sin((bullet_num/game.golden_half)) * (mouse_pos.x - game.player.pos[0]) + math.cos((bullet_num/game.golden_half)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
@@ -126,6 +124,7 @@ class Player:
         game.main_window.bind("<Button-1>", lambda mouse_pos: self.shoot(mouse_pos))
 
 class Hom:
+
     def __init__(self, x, y) -> None:
         self.pos = numpy.array([x,y], dtype=float)
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.hom_sprite)
@@ -165,6 +164,7 @@ class Hom:
         return
 
 class Bullet:
+
     def __init__(self, x, y):
         self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos)
         bullet_pos = game.player.pos + (self.dir_from_player * 15)
@@ -207,8 +207,8 @@ def main():
     global game
     game = Game()
     game.player = Player()
-    hom1 = Hom(100, 100)
-    hom2 = Hom(200, 100)
+    Hom(100, 100)
+    Hom(200, 100)
     game.spawn_hom()
     game.main_window.mainloop()
 
