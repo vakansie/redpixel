@@ -1,5 +1,5 @@
 # redpixel
 
-#'wasd' to move
-#click to shoot
-#dont miss
+##'wasd' to move
+##click to shoot
+##dont miss
