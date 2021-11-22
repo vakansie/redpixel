@@ -9,6 +9,9 @@ def unify_vector(vector):
     if not numpy.any(vector): return vector
     return vector / (vector**2).sum()**0.5
 
+def magnitude(vector):
+    return(vector[0] * vector[0] + vector[1] * vector[1])**0.5
+
 class Game:
 
     def __init__(self):
@@ -34,6 +37,7 @@ class Game:
     def game_over(self):
         if not self.lost:
             self.lost = True
+            self.player.cooldown = 10
             self.main_canvas.create_text(250, 250, text="HOMNOMNOM\n     FATALITY", fill="red", font=('Impact 36 bold'))
             # for task in self.tasks: self.main_canvas.after_cancel(task)
             self.main_canvas.after(3000, self.exit_game)
@@ -96,8 +100,8 @@ class Player:
     def shoot(self, mouse_pos):
         if game.lost: return
         now = time()
-        diff = game.player.pos - numpy.array([mouse_pos.x, mouse_pos.y])
-        dist = (diff[0] * diff[0] + diff[1] * diff[1])**0.5
+        difference_vector = game.player.pos - numpy.array([mouse_pos.x, mouse_pos.y])
+        dist = magnitude(difference_vector)
         scale = dist/500
         if now - self.last_shot > self.cooldown:
             for bullet_num in range(game.player.spread):
@@ -150,14 +154,15 @@ class Hom:
             game.hit_homs.remove(self.image)
             self.death()
             return
-        distance = game.player.pos - self.pos
-        if 1 < abs(distance[0]) + abs(distance[1]) < 35: 
-            game.main_canvas.move(self.image, distance[0], distance[1])
-            self.pos += distance * random.choice((0, 0.01, 0.1))
+        distance = magnitude(game.player.pos - self.pos)
+        if 8 < distance < 25:
+            leap = unify_vector(game.player.pos - self.pos) * distance * (1 + random.choice((0.3, -0.3)))
+            game.main_canvas.move(self.image, leap[0], leap[1])
+            self.pos += leap
+        self.homnomnom()
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
-        self.homnomnom()
         self.move_task = game.main_canvas.after(max(int(200/game.hom_speed_factor), 30), self.move_hom)
 
     def homnomnom(self):
@@ -234,8 +239,8 @@ class Final_Hom:
 class Bullet:
 
     def __init__(self, x, y):
-        self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos)
-        bullet_pos = game.player.pos + (self.dir_from_player * 15)
+        self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos) * 10
+        bullet_pos = game.player.pos + (self.dir_from_player * 1.5)
         self.task = game.main_canvas.after(30, self.move_bullet)
         self.image = game.main_canvas.create_rectangle(
             bullet_pos[0],
@@ -247,16 +252,15 @@ class Bullet:
         game.main_canvas.after(1200, self.delete)
 
     def move_bullet(self):
-        game.main_canvas.move(self.image, self.dir_from_player[0]*10, self.dir_from_player[1]*10)
+        game.main_canvas.move(self.image, self.dir_from_player[0], self.dir_from_player[1])
         self.hit()
         game.main_canvas.after(30, self.move_bullet)
 
     def hit(self):
         hitbox = game.main_canvas.coords(self.image)
         if hitbox: 
-            homs = game.main_canvas.find_withtag('hom')
             overlap = game.main_canvas.find_overlapping( hitbox[0], hitbox[1], hitbox[2], hitbox[3])
-            hit_homs = [hom for hom in homs if hom in overlap]
+            hit_homs = [hom for hom in game.main_canvas.find_withtag('hom') if hom in overlap]
             if hit_homs:
                 for hom in hit_homs:
                     game.hit_homs.append(hom)
