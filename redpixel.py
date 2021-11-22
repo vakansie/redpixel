@@ -46,9 +46,9 @@ class Game:
         self.main_canvas.after(3000, self.exit_game)
 
     def exit_game(self):
-        from test import display_top
-        snapshot = tracemalloc.take_snapshot()
-        display_top(snapshot)
+        # from test import display_top
+        # snapshot = tracemalloc.take_snapshot()
+        # display_top(snapshot)
         exit()
 
     def spawn_hom(self):
@@ -143,22 +143,22 @@ class Hom:
     def __init__(self, x, y, sprite):
         self.pos = numpy.array([x,y], dtype=float)
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=sprite, tags='hom')
-        self.move_task = game.main_canvas.after(int(1000 / game.hom_speed_factor), self.move)
+        self.move_task = game.main_canvas.after(int(1000 / game.hom_speed_factor), self.move_hom)
 
-    def move(self):
+    def move_hom(self):
         if self.image in game.hit_homs:
             game.hit_homs.remove(self.image)
             self.death()
             return
         distance = game.player.pos - self.pos
-        if 1 < abs(distance[0]) + abs(distance[1]) < 33: 
+        if 1 < abs(distance[0]) + abs(distance[1]) < 35: 
             game.main_canvas.move(self.image, distance[0], distance[1])
             self.pos += distance * random.choice((0, 0.01, 0.1))
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
         self.homnomnom()
-        self.move_task = game.main_canvas.after(max(int(200/game.hom_speed_factor), 30), self.move)
+        self.move_task = game.main_canvas.after(max(int(200/game.hom_speed_factor), 30), self.move_hom)
 
     def homnomnom(self):
         if game.player.image in game.main_canvas.find_overlapping(
@@ -175,7 +175,7 @@ class Hom:
         if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
             game.enemy_spawn_rate += 0.12
-            game.hom_speed_factor += 0.055
+            game.hom_speed_factor += 0.058
         return
 
 class Final_Hom:
@@ -193,7 +193,7 @@ class Final_Hom:
         game.enemy_spawn_rate *= 2
 
     def act(self):
-        self.move()
+        self.move_final_hom()
         self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
         self.task = game.main_canvas.after(700, self.act)
         self.resolve_hits()
@@ -226,7 +226,7 @@ class Final_Hom:
         game.main_canvas.delete(self.health_bar)
         self.health_bar = game.main_canvas.create_rectangle(175, 470, 325-(150-self.hitpoints), 500, fill='red')
 
-    def move(self):
+    def move_final_hom(self):
         step = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += step
         game.main_canvas.move(self.image, step[0], step[1])
@@ -236,7 +236,7 @@ class Bullet:
     def __init__(self, x, y):
         self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos)
         bullet_pos = game.player.pos + (self.dir_from_player * 15)
-        self.task = game.main_canvas.after(30, self.move)
+        self.task = game.main_canvas.after(30, self.move_bullet)
         self.image = game.main_canvas.create_rectangle(
             bullet_pos[0],
             bullet_pos[1]+6,
@@ -246,10 +246,10 @@ class Bullet:
             tags='bullet')
         game.main_canvas.after(1200, self.delete)
 
-    def move(self):
+    def move_bullet(self):
         game.main_canvas.move(self.image, self.dir_from_player[0]*10, self.dir_from_player[1]*10)
         self.hit()
-        game.main_canvas.after(30, self.move)
+        game.main_canvas.after(30, self.move_bullet)
 
     def hit(self):
         hitbox = game.main_canvas.coords(self.image)
@@ -278,6 +278,6 @@ def main():
     game.main_window.mainloop()
 
 if __name__ == '__main__':
-    import tracemalloc
-    tracemalloc.start()
+    # import tracemalloc
+    # tracemalloc.start()
     main()
