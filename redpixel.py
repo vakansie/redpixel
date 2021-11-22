@@ -5,12 +5,6 @@ import random
 from time import time
 import math
 
-def unify_vector(vector):
-    if not numpy.any(vector): return vector
-    return vector / (vector**2).sum()**0.5
-
-def magnitude(vector):
-    return(vector[0] * vector[0] + vector[1] * vector[1])**0.5
 
 class Game:
 
@@ -39,7 +33,6 @@ class Game:
             self.lost = True
             self.player.cooldown = 10
             self.main_canvas.create_text(250, 250, text="HOMNOMNOM\n     FATALITY", fill="red", font=('Impact 36 bold'))
-            # for task in self.tasks: self.main_canvas.after_cancel(task)
             self.main_canvas.after(3000, self.exit_game)
 
     def victory(self):
@@ -47,7 +40,7 @@ class Game:
             game.hit_homs.append(hom)
         self.main_canvas.after_cancel(self.spawn_task)
         self.main_canvas.create_text(250, 250, text="VICTORY", fill="green", font=('Impact 36 bold'))
-        self.main_canvas.after(3000, self.exit_game)
+        self.main_canvas.after(5000, self.exit_game)
 
     def exit_game(self):
         # from test import display_top
@@ -102,13 +95,13 @@ class Player:
         now = time()
         difference_vector = game.player.pos - numpy.array([mouse_pos.x, mouse_pos.y])
         dist = magnitude(difference_vector)
-        scale = dist/500
+        scale = dist/90
         if now - self.last_shot > self.cooldown:
             for bullet_num in range(game.player.spread):
                 if bullet_num % 2 == 0: 
-                    bullet_num = (bullet_num // 2) * -1
+                    bullet_num = bullet_num // 2 * -1
                     scale = scale * -1
-                angle = ((bullet_num / game.player.spread) * math.pi *(scale+scale)) /  game.golden_double
+                angle = (bullet_num / game.player.spread) * math.pi * scale /  game.golden_double
                 x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
                 y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
                 Bullet(x, y)
@@ -144,6 +137,8 @@ class Player:
 
 class Hom:
 
+    __slots__ = ('pos', 'image', 'move_task')
+
     def __init__(self, x, y, sprite):
         self.pos = numpy.array([x,y], dtype=float)
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=sprite, tags='hom')
@@ -155,7 +150,7 @@ class Hom:
             self.death()
             return
         distance = magnitude(game.player.pos - self.pos)
-        if 8 < distance < 25:
+        if 6 < distance < 50:
             leap = unify_vector(game.player.pos - self.pos) * distance * (1 + random.choice((0.3, -0.3)))
             game.main_canvas.move(self.image, leap[0], leap[1])
             self.pos += leap
@@ -176,11 +171,11 @@ class Hom:
         del self
         game.player.kill_count += 1
         game.update_score()
-        game.player.spread = (game.player.kill_count // 5) + 1
+        game.player.spread = game.player.kill_count // 5 + 1
         if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
-            game.enemy_spawn_rate += 0.12
-            game.hom_speed_factor += 0.058
+            game.enemy_spawn_rate += 0.15
+            game.hom_speed_factor += 0.05
         return
 
 class Final_Hom:
@@ -205,11 +200,10 @@ class Final_Hom:
 
     def wield_taco(self, x, y):
         taco = Hom(x, y, sprite=game.adjuster_sprite)
-        dx, dy = random.choice((-1, 1)), random.choice((-1, 1))
+        dx, dy = random.choice((-1, 0, 1)), random.choice((-1, 1))
         step = numpy.array([dx, dy]) * random.choice((70, 0))
         game.main_canvas.move(taco.image, step[0], step[1])
         taco.pos += step
-
 
     def resolve_hits(self):
         hits = [hom for hom in game.hit_homs if hom == self.image]
@@ -229,7 +223,7 @@ class Final_Hom:
 
     def update_health_bar(self):
         game.main_canvas.delete(self.health_bar)
-        self.health_bar = game.main_canvas.create_rectangle(175, 470, 325-(150-self.hitpoints), 500, fill='red')
+        self.health_bar = game.main_canvas.create_rectangle(self.pos[0] - 75, 470, self.pos[0] + 75-(150-self.hitpoints), 500, fill='red')
 
     def move_final_hom(self):
         step = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
@@ -238,9 +232,11 @@ class Final_Hom:
 
 class Bullet:
 
+    __slots__ = ('dir_from_player', 'task', 'image')
+
     def __init__(self, x, y):
         self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos) * 10
-        bullet_pos = game.player.pos + (self.dir_from_player * 1.5)
+        bullet_pos = game.player.pos + self.dir_from_player * 1.5
         self.task = game.main_canvas.after(30, self.move_bullet)
         self.image = game.main_canvas.create_rectangle(
             bullet_pos[0],
@@ -249,12 +245,12 @@ class Bullet:
             bullet_pos[1]+11,
             fill='red',
             tags='bullet')
-        game.main_canvas.after(1200, self.delete)
+        game.main_canvas.after(800, self.delete)
 
     def move_bullet(self):
         game.main_canvas.move(self.image, self.dir_from_player[0], self.dir_from_player[1])
         self.hit()
-        game.main_canvas.after(30, self.move_bullet)
+        game.main_canvas.after(40, self.move_bullet)
 
     def hit(self):
         hitbox = game.main_canvas.coords(self.image)
@@ -271,6 +267,13 @@ class Bullet:
         game.main_canvas.after_cancel(self.task)
         game.main_canvas.delete(self.image)
         del self
+
+def unify_vector(vector):
+    if not numpy.any(vector): return vector
+    return vector / (vector**2).sum()**0.5
+
+def magnitude(vector):
+    return(vector[0] * vector[0] + vector[1] * vector[1])**0.5
 
 def main():
     global game
