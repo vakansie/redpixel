@@ -26,10 +26,10 @@ class Game:
         self.player = None
         self.final_hom = None
         self.lost = False
-        self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         self.golden_half = (1 + 5 ** 0.5)
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0}', fill="red", font=('Impact 12 bold'))
-        #self.save_canvas()
+        # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
+        # self.save_canvas()
 
     def game_over(self):
         if not self.lost:
@@ -43,9 +43,12 @@ class Game:
             game.hit_homs.append(hom)
         self.main_canvas.after_cancel(self.spawn_task)
         self.main_canvas.create_text(250, 250, text="VICTORY", fill="green", font=('Impact 36 bold'))
-        #self.main_canvas.after(3000, self.exit_game)
+        self.main_canvas.after(3000, self.exit_game)
 
     def exit_game(self):
+        from test import display_top
+        snapshot = tracemalloc.take_snapshot()
+        display_top(snapshot)
         exit()
 
     def spawn_hom(self):
@@ -83,7 +86,7 @@ class Player:
         self.left_vector = numpy.array([-1, 0])
         self.down_vector = numpy.array([0, 1])
         self.right_vector = numpy.array([1, 0])
-        self.cooldown = 1
+        self.cooldown = 0.3
         self.last_shot = 0
         self.moving = None
         self.image = game.main_canvas.create_image(20, 20, image=game.player_sprite)
@@ -168,23 +171,27 @@ class Hom:
         game.player.spread = (game.player.kill_count // 5) + 1
         if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
-            game.enemy_spawn_rate += 0.1
-            game.hom_speed_factor += 0.05
+            game.enemy_spawn_rate += 0.12
+            game.hom_speed_factor += 0.055
         return
 
 class Final_Hom:
     
-    def __init__(self) -> None:
-        self.pos = numpy.array([300, 300], dtype=float)
+    def __init__(self):
+        distance = random.randrange(40, 75)
+        self.pos = numpy.array([250, 250], dtype=float)
+        dir_from_player = unify_vector(self.pos - game.player.pos)
+        spawn_point = self.pos + dir_from_player * distance
+        self.pos = spawn_point
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.final_hom_sprite, tags='hom')
         self.health_bar = game.main_canvas.create_rectangle(175, 470, 325, 500, fill='red')
-        self.hitpoints = 150
+        self.hitpoints = 250
         self.task = self.act()
 
     def act(self):
         self.move()
         self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
-        self.task = game.main_canvas.after(800, self.act)
+        self.task = game.main_canvas.after(700, self.act)
         self.resolve_hits()
 
     def wield_taco(self, x, y):
@@ -197,16 +204,18 @@ class Final_Hom:
             self.hitpoints -= 1
         self.update_health_bar()
         if self.hitpoints <= 0:
-            game.main_canvas.delete(self.health_bar)
-            game.main_canvas.after_cancel(self.task)
-            game.main_canvas.delete(self.image)
-            del self
-            game.victory()
+            self.death()
+
+    def death(self):
+        game.main_canvas.delete(self.health_bar)
+        game.main_canvas.after_cancel(self.task)
+        game.main_canvas.delete(self.image)
+        del self
+        game.victory()
 
     def update_health_bar(self):
         game.main_canvas.delete(self.health_bar)
         self.health_bar = game.main_canvas.create_rectangle(175, 470, 325-(150-self.hitpoints), 500, fill='red')
-
 
     def move(self):
         step = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
@@ -243,7 +252,7 @@ class Bullet:
                 for hom in hit_homs:
                     game.hit_homs.append(hom)
                 self.delete()
-                game.player.last_shot = 0
+                game.player.last_shot = 0.2
 
     def delete(self):
         game.main_canvas.after_cancel(self.task)
@@ -260,4 +269,6 @@ def main():
     game.main_window.mainloop()
 
 if __name__ == '__main__':
+    import tracemalloc
+    tracemalloc.start()
     main()
