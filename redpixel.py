@@ -26,7 +26,7 @@ class Game:
         self.player = None
         self.final_hom = None
         self.lost = False
-        self.golden_half = (1 + 5 ** 0.5)
+        self.golden_double = (1 + 5 ** 0.5)
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0}', fill="red", font=('Impact 12 bold'))
         # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         # self.save_canvas()
@@ -61,7 +61,6 @@ class Game:
         self.spawn_task = self.main_canvas.after(spawn_rate, self.spawn_hom)
 
     def spawn_final_hom(self):
-        self.enemy_spawn_rate *= 2
         self.final_hom = Final_Hom()
 
     def save_canvas(self):
@@ -105,7 +104,7 @@ class Player:
                 if bullet_num % 2 == 0: 
                     bullet_num = (bullet_num // 2) * -1
                     scale = scale * -1
-                angle = ((bullet_num / game.player.spread) * math.pi *(scale+scale)) /  game.golden_half
+                angle = ((bullet_num / game.player.spread) * math.pi *(scale+scale)) /  game.golden_double
                 x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
                 y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
                 Bullet(x, y)
@@ -151,6 +150,10 @@ class Hom:
             game.hit_homs.remove(self.image)
             self.death()
             return
+        distance = game.player.pos - self.pos
+        if 1 < abs(distance[0]) + abs(distance[1]) < 33: 
+            game.main_canvas.move(self.image, distance[0], distance[1])
+            self.pos += distance * random.choice((0, 0.01, 0.1))
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
@@ -187,6 +190,7 @@ class Final_Hom:
         self.health_bar = game.main_canvas.create_rectangle(175, 470, 325, 500, fill='red')
         self.hitpoints = 250
         self.task = self.act()
+        game.enemy_spawn_rate *= 2
 
     def act(self):
         self.move()
@@ -195,7 +199,12 @@ class Final_Hom:
         self.resolve_hits()
 
     def wield_taco(self, x, y):
-        Hom(x, y, sprite=game.adjuster_sprite)
+        taco = Hom(x, y, sprite=game.adjuster_sprite)
+        dx, dy = random.choice((-1, 1)), random.choice((-1, 1))
+        step = numpy.array([dx, dy]) * random.choice((70, 0))
+        game.main_canvas.move(taco.image, step[0], step[1])
+        taco.pos += step
+
 
     def resolve_hits(self):
         hits = [hom for hom in game.hit_homs if hom == self.image]
