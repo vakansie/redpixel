@@ -17,28 +17,33 @@ class Game:
         self.main_canvas.pack(expand=1, fill='both')
         self.player_sprite = ImageTk.PhotoImage(Image.open('redpixel.png'))
         self.hom_sprite = ImageTk.PhotoImage(Image.open('hom1.png'))
+        self.final_hom_sprite = ImageTk.PhotoImage(Image.open('finalhom.png'))        
+        self.adjuster_sprite = ImageTk.PhotoImage(Image.open('taco.png'))
         self.enemy_spawn_rate = 1
         self.hom_speed_factor = 1
-        self.tasks = []
-        self.enemy_tasks = []
+        self.spawn_task = None
+        self.hit_homs = []
         self.player = None
+        self.final_hom = None
         self.lost = False
         self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         self.golden_half = (1 + 5 ** 0.5)
-        self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
+        self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0}', fill="red", font=('Impact 12 bold'))
         #self.save_canvas()
 
     def game_over(self):
         if not self.lost:
             self.lost = True
             self.main_canvas.create_text(250, 250, text="HOMNOMNOM\n     FATALITY", fill="red", font=('Impact 36 bold'))
-            for task in self.tasks: self.main_canvas.after_cancel(task)
+            # for task in self.tasks: self.main_canvas.after_cancel(task)
             self.main_canvas.after(3000, self.exit_game)
 
     def victory(self):
+        for hom in game.main_canvas.find_withtag('hom'):
+            game.hit_homs.append(hom)
+        self.main_canvas.after_cancel(self.spawn_task)
         self.main_canvas.create_text(250, 250, text="VICTORY", fill="green", font=('Impact 36 bold'))
-        for task in self.enemy_tasks: self.main_canvas.after_cancel(task)
-        self.main_canvas.after(3000, self.exit_game)
+        #self.main_canvas.after(3000, self.exit_game)
 
     def exit_game(self):
         exit()
@@ -48,11 +53,13 @@ class Game:
         direction = unify_vector(numpy.random.uniform(-1, 1, 2))
         spawn_point = game.player.pos + direction * distance
         self.pos = spawn_point
-        Hom(spawn_point[0], spawn_point[1])
+        Hom(x=spawn_point[0], y=spawn_point[1], sprite=game.hom_sprite)
         spawn_rate = int(max(1500 / game.enemy_spawn_rate*game.enemy_spawn_rate,0.01))
-        task = self.main_canvas.after(spawn_rate, self.spawn_hom)
-        self.enemy_tasks.append(task)
-        self.tasks.append(task)
+        self.spawn_task = self.main_canvas.after(spawn_rate, self.spawn_hom)
+
+    def spawn_final_hom(self):
+        self.enemy_spawn_rate *= 2
+        self.final_hom = Final_Hom()
 
     def save_canvas(self):
         imgnum = next(self.imgnum)
@@ -64,7 +71,7 @@ class Game:
         self.main_window.after(100, self.save_canvas)
 
     def update_score(self):
-        self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3} /25')
+        self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3}')
 
 class Player:
 
@@ -87,11 +94,17 @@ class Player:
     def shoot(self, mouse_pos):
         if game.lost: return
         now = time()
+        diff = game.player.pos - numpy.array([mouse_pos.x, mouse_pos.y])
+        dist = (diff[0] * diff[0] + diff[1] * diff[1])**0.5
+        scale = dist/500
         if now - self.last_shot > self.cooldown:
             for bullet_num in range(game.player.spread):
-                if bullet_num % 2 == 0: bullet_num = (bullet_num // 2) * -1
-                x = math.cos((bullet_num/game.golden_half)) * (mouse_pos.x - game.player.pos[0]) - math.sin((bullet_num/game.golden_half)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
-                y = math.sin((bullet_num/game.golden_half)) * (mouse_pos.x - game.player.pos[0]) + math.cos((bullet_num/game.golden_half)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
+                if bullet_num % 2 == 0: 
+                    bullet_num = (bullet_num // 2) * -1
+                    scale = scale * -1
+                angle = ((bullet_num / game.player.spread) * math.pi *(scale+scale)) /  game.golden_half
+                x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
+                y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
                 Bullet(x, y)
             self.last_shot = now
 
@@ -125,49 +138,87 @@ class Player:
 
 class Hom:
 
-    def __init__(self, x, y) -> None:
+    def __init__(self, x, y, sprite):
         self.pos = numpy.array([x,y], dtype=float)
-        self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.hom_sprite)
+        self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=sprite, tags='hom')
         self.move_task = game.main_canvas.after(int(1000 / game.hom_speed_factor), self.move)
-        game.enemy_tasks.append(self.move_task)
 
     def move(self):
-        if 'hit' in game.main_canvas.itemcget(self.image, "tags"):
+        if self.image in game.hit_homs:
+            game.hit_homs.remove(self.image)
             self.death()
             return
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
-        self.hit()
-        task = game.main_canvas.after(int(200/game.hom_speed_factor), self.move)
-        game.enemy_tasks.append(task)
+        self.homnomnom()
+        self.move_task = game.main_canvas.after(max(int(200/game.hom_speed_factor), 30), self.move)
 
-    def hit(self):
-        colliders = game.main_canvas.find_overlapping(
-            self.pos[0], self.pos[1], self.pos[0]+1, self.pos[1]+1)
-        for collider in colliders:
-            if collider == game.player.image:
-                game.game_over()
+    def homnomnom(self):
+        if game.player.image in game.main_canvas.find_overlapping(
+            self.pos[0], self.pos[1], self.pos[0]+1, self.pos[1]+1):
+            game.game_over()
 
     def death(self):
+        game.main_canvas.after_cancel(self.move_task)
         game.main_canvas.delete(self.image)
         del self
         game.player.kill_count += 1
-        game.player.last_shot = 0
         game.update_score()
         game.player.spread = (game.player.kill_count // 5) + 1
-        if game.player.kill_count >= 25:
-            game.victory()
-            return
-        game.enemy_spawn_rate += 0.1
-        game.hom_speed_factor += 0.07
+        if game.player.kill_count == 25: game.spawn_final_hom()
+        if not game.final_hom:
+            game.enemy_spawn_rate += 0.1
+            game.hom_speed_factor += 0.05
         return
+
+class Final_Hom:
+    
+    def __init__(self) -> None:
+        self.pos = numpy.array([300, 300], dtype=float)
+        self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.final_hom_sprite, tags='hom')
+        self.health_bar = game.main_canvas.create_rectangle(175, 470, 325, 500, fill='red')
+        self.hitpoints = 150
+        self.task = self.act()
+
+    def act(self):
+        self.move()
+        self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
+        self.task = game.main_canvas.after(800, self.act)
+        self.resolve_hits()
+
+    def wield_taco(self, x, y):
+        Hom(x, y, sprite=game.adjuster_sprite)
+
+    def resolve_hits(self):
+        hits = [hom for hom in game.hit_homs if hom == self.image]
+        for hit in hits:
+            game.hit_homs.remove(hit)
+            self.hitpoints -= 1
+        self.update_health_bar()
+        if self.hitpoints <= 0:
+            game.main_canvas.delete(self.health_bar)
+            game.main_canvas.after_cancel(self.task)
+            game.main_canvas.delete(self.image)
+            del self
+            game.victory()
+
+    def update_health_bar(self):
+        game.main_canvas.delete(self.health_bar)
+        self.health_bar = game.main_canvas.create_rectangle(175, 470, 325-(150-self.hitpoints), 500, fill='red')
+
+
+    def move(self):
+        step = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
+        self.pos += step
+        game.main_canvas.move(self.image, step[0], step[1])
 
 class Bullet:
 
     def __init__(self, x, y):
         self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos)
         bullet_pos = game.player.pos + (self.dir_from_player * 15)
+        self.task = game.main_canvas.after(30, self.move)
         self.image = game.main_canvas.create_rectangle(
             bullet_pos[0],
             bullet_pos[1]+6,
@@ -175,31 +226,27 @@ class Bullet:
             bullet_pos[1]+11,
             fill='red',
             tags='bullet')
-        game.tasks.append(game.main_canvas.after(30, self.move))
-        game.tasks.append(game.main_canvas.after(30, self.hit))
-        game.main_canvas.after(2000, self.delete)
+        game.main_canvas.after(1200, self.delete)
 
     def move(self):
         game.main_canvas.move(self.image, self.dir_from_player[0]*10, self.dir_from_player[1]*10)
-        game.tasks.append(game.main_canvas.after(30, self.move))
+        self.hit()
+        game.main_canvas.after(30, self.move)
 
     def hit(self):
-        if 'hit' in game.main_canvas.itemcget(self.image, "tags"):
-            game.main_canvas.delete(self.image)
-            del self
-            return
         hitbox = game.main_canvas.coords(self.image)
         if hitbox: 
-            overlap = game.main_canvas.find_overlapping(
-            hitbox[0], hitbox[1], hitbox[2], hitbox[3])
-            if game.player.image not in overlap and len(overlap) != 1:
-                game.main_canvas.addtag_overlapping(
-                    'hit',
-                    hitbox[0], hitbox[1], hitbox[2], hitbox[3])
+            homs = game.main_canvas.find_withtag('hom')
+            overlap = game.main_canvas.find_overlapping( hitbox[0], hitbox[1], hitbox[2], hitbox[3])
+            hit_homs = [hom for hom in homs if hom in overlap]
+            if hit_homs:
+                for hom in hit_homs:
+                    game.hit_homs.append(hom)
+                self.delete()
                 game.player.last_shot = 0
-        game.tasks.append(game.main_canvas.after(30, self.hit))
 
     def delete(self):
+        game.main_canvas.after_cancel(self.task)
         game.main_canvas.delete(self.image)
         del self
 
@@ -207,8 +254,8 @@ def main():
     global game
     game = Game()
     game.player = Player()
-    Hom(100, 100)
-    Hom(200, 100)
+    Hom(100, 100, game.hom_sprite)
+    Hom(200, 100, game.hom_sprite)
     game.spawn_hom()
     game.main_window.mainloop()
 
