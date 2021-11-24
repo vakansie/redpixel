@@ -39,7 +39,6 @@ class Game:
         for hom in game.main_canvas.find_withtag('hom'):
             game.hit_homs.append(hom)
         self.main_canvas.after_cancel(self.spawn_task)
-        self.enemy_spawn_rate = 0
         self.main_canvas.create_text(250, 250, text="VICTORY", fill="green", font=('Impact 36 bold'))
         self.main_canvas.after(5000, self.exit_game)
 
@@ -146,7 +145,6 @@ class Hom:
 
     def move_hom(self):
         if self.image in game.hit_homs:
-            game.hit_homs.remove(self.image)
             self.death()
             return
         distance = magnitude(game.player.pos - self.pos)
@@ -167,15 +165,16 @@ class Hom:
 
     def death(self):
         game.main_canvas.after_cancel(self.move_task)
+        game.hit_homs.remove(self.image)
         game.main_canvas.delete(self.image)
         del self
         game.player.kill_count += 1
         game.update_score()
-        game.player.spread = game.player.kill_count // 5 + 1
+        game.player.spread = game.player.kill_count // (5 if not game.final_hom else 8) + 1
         if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
-            game.enemy_spawn_rate += 0.15
-            game.hom_speed_factor += 0.05
+            game.enemy_spawn_rate += 0.3
+            game.hom_speed_factor += 0.06
         return
 
 class Final_Hom:
@@ -194,13 +193,14 @@ class Final_Hom:
         game.hom_speed_factor += 0.1
 
     def act(self):
-        self.resolve_hits()
         self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
         self.move_final_hom()
         self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
+        self.resolve_hits()
         self.task = game.main_canvas.after(700, self.act)
 
     def wield_taco(self, x, y):
+        if self.hitpoints <= 0: return
         taco = Hom(x, y, sprite=game.adjuster_sprite)
         dx, dy = random.choice((-1, 0, 1)), random.choice((-1, 1))
         step = numpy.array([dx, dy]) * random.choice((70, 70, 0))
