@@ -39,6 +39,7 @@ class Game:
         for hom in game.main_canvas.find_withtag('hom'):
             game.hit_homs.append(hom)
         self.main_canvas.after_cancel(self.spawn_task)
+        self.enemy_spawn_rate = 0
         self.main_canvas.create_text(250, 250, text="VICTORY", fill="green", font=('Impact 36 bold'))
         self.main_canvas.after(5000, self.exit_game)
 
