@@ -94,18 +94,17 @@ class Player:
         if game.lost: return
         now = time()
         difference_vector = game.player.pos - numpy.array([mouse_pos.x, mouse_pos.y])
-        dist = magnitude(difference_vector)
-        scale = dist/90
-        if now - self.last_shot > self.cooldown:
-            for bullet_num in range(game.player.spread):
-                if bullet_num % 2 == 0: 
-                    bullet_num = bullet_num // 2 * -1
-                    scale = scale * -1
-                angle = (bullet_num / game.player.spread) * math.pi * scale /  game.golden_double
-                x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
-                y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
-                Bullet(x, y)
-            self.last_shot = now
+        scale = magnitude(difference_vector)/300
+        if now - self.last_shot < self.cooldown: return
+        for bullet_num in range(game.player.spread):
+            if bullet_num % 2 == 0: 
+                bullet_num = bullet_num // 2
+                angle = 2 * math.pi - (bullet_num * game.golden_double/math.pi * scale)
+            else: angle = (bullet_num * game.golden_double/math.pi * scale)
+            x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
+            y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
+            Bullet(x, y)
+        self.last_shot = now
 
     def move_player(self, direction_vector):
         if game.lost: return
@@ -232,7 +231,7 @@ class Final_Hom:
 
 class Bullet:
 
-    __slots__ = ('dir_from_player', 'task', 'image')
+    #__slots__ = ('dir_from_player', 'task', 'image')
 
     def __init__(self, x, y):
         self.dir_from_player = unify_vector(numpy.array([x,y]) - game.player.pos) * 10
@@ -245,12 +244,12 @@ class Bullet:
             bullet_pos[1]+11,
             fill='red',
             tags='bullet')
-        game.main_canvas.after(800, self.delete)
+        game.main_canvas.after(1200, self.delete)
 
     def move_bullet(self):
         game.main_canvas.move(self.image, self.dir_from_player[0], self.dir_from_player[1])
         self.hit()
-        game.main_canvas.after(40, self.move_bullet)
+        self.task = game.main_canvas.after(30, self.move_bullet)
 
     def hit(self):
         hitbox = game.main_canvas.coords(self.image)
