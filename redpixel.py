@@ -24,7 +24,7 @@ class Game:
         self.final_hom = None
         self.lost = False
         self.golden_r = (1 + 5 ** 0.5) / 2
-        self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0}', fill="red", font=('Impact 12 bold'))
+        self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
         # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         # self.save_canvas()
 
@@ -70,7 +70,7 @@ class Game:
         self.main_window.after(100, self.save_canvas)
 
     def update_score(self):
-        self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3}')
+        self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3} /25')
 
 class Player:
 
