@@ -23,7 +23,7 @@ class Game:
         self.player = None
         self.final_hom = None
         self.lost = False
-        self.golden_double = (1 + 5 ** 0.5)
+        self.golden_r = (1 + 5 ** 0.5) / 2
         self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0}', fill="red", font=('Impact 12 bold'))
         # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         # self.save_canvas()
@@ -43,9 +43,9 @@ class Game:
         self.main_canvas.after(5000, self.exit_game)
 
     def exit_game(self):
-        # from test import display_top
-        # snapshot = tracemalloc.take_snapshot()
-        # display_top(snapshot)
+        from test import display_top
+        snapshot = tracemalloc.take_snapshot()
+        display_top(snapshot)
         exit()
 
     def spawn_hom(self):
@@ -97,10 +97,10 @@ class Player:
         scale = magnitude(difference_vector)/300
         if now - self.last_shot < self.cooldown: return
         for bullet_num in range(game.player.spread):
-            if bullet_num % 2 == 0: 
-                bullet_num = bullet_num // 2
-                angle = 2 * math.pi - (bullet_num * game.golden_double/math.pi * scale)
-            else: angle = (bullet_num * game.golden_double/math.pi * scale)
+            if not bullet_num % 2 and bullet_num:
+                bullet_num = bullet_num - 1
+                angle = 2 * math.pi - (bullet_num * game.golden_r/math.pi * scale)
+            else: angle = (bullet_num * game.golden_r/math.pi * scale)
             x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
             y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
             Bullet(x, y)
@@ -190,17 +190,19 @@ class Final_Hom:
         self.hitpoints = 250
         self.task = self.act()
         game.enemy_spawn_rate *= 2
+        game.hom_speed_factor += 0.1
 
     def act(self):
+        self.resolve_hits()
+        self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
         self.move_final_hom()
         self.wield_taco(self.pos[0] - 35, self.pos[1] + 15)
         self.task = game.main_canvas.after(700, self.act)
-        self.resolve_hits()
 
     def wield_taco(self, x, y):
         taco = Hom(x, y, sprite=game.adjuster_sprite)
         dx, dy = random.choice((-1, 0, 1)), random.choice((-1, 1))
-        step = numpy.array([dx, dy]) * random.choice((70, 0))
+        step = numpy.array([dx, dy]) * random.choice((70, 70, 0))
         game.main_canvas.move(taco.image, step[0], step[1])
         taco.pos += step
 
@@ -253,14 +255,14 @@ class Bullet:
 
     def hit(self):
         hitbox = game.main_canvas.coords(self.image)
-        if hitbox: 
-            overlap = game.main_canvas.find_overlapping( hitbox[0], hitbox[1], hitbox[2], hitbox[3])
-            hit_homs = [hom for hom in game.main_canvas.find_withtag('hom') if hom in overlap]
-            if hit_homs:
-                for hom in hit_homs:
-                    game.hit_homs.append(hom)
-                self.delete()
-                game.player.last_shot = 0.2
+        if not hitbox: return
+        overlap = game.main_canvas.find_overlapping( hitbox[0], hitbox[1], hitbox[2], hitbox[3])
+        hit_homs = [hom for hom in game.main_canvas.find_withtag('hom') if hom in overlap]
+        if not hit_homs: return
+        for hom in hit_homs:
+            game.hit_homs.append(hom)
+        self.delete()
+        game.player.last_shot = 0.2
 
     def delete(self):
         game.main_canvas.after_cancel(self.task)
@@ -284,6 +286,6 @@ def main():
     game.main_window.mainloop()
 
 if __name__ == '__main__':
-    # import tracemalloc
-    # tracemalloc.start()
+    import tracemalloc
+    tracemalloc.start()
     main()
