@@ -3,7 +3,7 @@ import numpy
 from PIL import Image, ImageTk #, ImageGrab
 import random
 from time import time
-import math
+from math import sin, cos, pi
 
 
 class Game:
@@ -43,9 +43,9 @@ class Game:
         self.main_canvas.after(5000, self.exit_game)
 
     def exit_game(self):
-        from test import display_top
-        snapshot = tracemalloc.take_snapshot()
-        display_top(snapshot)
+        # from test import display_top
+        # snapshot = tracemalloc.take_snapshot()
+        # display_top(snapshot)
         exit()
 
     def spawn_hom(self):
@@ -99,10 +99,10 @@ class Player:
         for bullet_num in range(game.player.spread):
             if not bullet_num % 2 and bullet_num:
                 bullet_num = bullet_num - 1
-                angle = 2 * math.pi - (bullet_num * game.golden_r/math.pi * scale)
-            else: angle = (bullet_num * game.golden_r/math.pi * scale)
-            x = math.cos((angle)) * (mouse_pos.x - game.player.pos[0]) - math.sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
-            y = math.sin((angle)) * (mouse_pos.x - game.player.pos[0]) + math.cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
+                angle = 2 * pi - (bullet_num * game.golden_r/pi * scale)
+            else: angle = (bullet_num * game.golden_r/pi * scale)
+            x = cos((angle)) * (mouse_pos.x - game.player.pos[0]) - sin((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[0]
+            y = sin((angle)) * (mouse_pos.x - game.player.pos[0]) + cos((angle)) * (mouse_pos.y - game.player.pos[1]) + game.player.pos[1]
             Bullet(x, y)
         self.last_shot = now
 
@@ -286,6 +286,6 @@ def main():
     game.main_window.mainloop()
 
 if __name__ == '__main__':
-    import tracemalloc
-    tracemalloc.start()
+    # import tracemalloc
+    # tracemalloc.start()
     main()
