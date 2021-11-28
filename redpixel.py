@@ -24,7 +24,7 @@ class Game:
         self.final_hom = None
         self.lost = False
         self.golden_r = (1 + 5 ** 0.5) / 2
-        self.score_display = self.main_canvas.create_text(450, 20, text=f'KILLS:  {0} /25', fill="red", font=('Impact 12 bold'))
+        self.score_display = self.main_canvas.create_text(450, 20, text=f"KILLS:  {0} /25", fill="red", font=('Impact 12 bold'))
         # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         # self.save_canvas()
 
@@ -58,6 +58,7 @@ class Game:
         self.spawn_task = self.main_canvas.after(spawn_rate, self.spawn_hom)
 
     def spawn_final_hom(self):
+        if not self.player.health: self.player.health = Health_Pixel()
         self.final_hom = Final_Hom()
 
     def save_canvas(self):
@@ -77,6 +78,7 @@ class Player:
     def __init__(self):
         self.pos = numpy.array([20,20], dtype=float)
         self.dist_to_move = numpy.array([0,0], dtype=float)
+
         self.dir = numpy.array([0,0], dtype=float)
         self.up_vector = numpy.array([0, -1])
         self.left_vector = numpy.array([-1, 0])
@@ -85,6 +87,7 @@ class Player:
         self.cooldown = 0.3
         self.last_shot = 0
         self.moving = None
+        self.health = None
         self.image = game.main_canvas.create_image(20, 20, image=game.player_sprite)
         self.kill_count = 0
         self.spread = 1
@@ -113,6 +116,7 @@ class Player:
         self.pos += self.dist_to_move
         game.main_canvas.move(self.image, self.dist_to_move[0], self.dist_to_move[1])
         if self.moving: game.main_canvas.after_cancel(self.moving)
+        if self.health: self.health.rotate()
         self.moving = game.main_canvas.after(30, self.move_player, self.dir)
 
     def up(self):
@@ -152,7 +156,7 @@ class Hom:
             leap = unify_vector(game.player.pos - self.pos) * distance * (1 + random.choice((0.3, -0.3)))
             game.main_canvas.move(self.image, leap[0], leap[1])
             self.pos += leap
-        self.homnomnom()
+        if not self.homnomnom(): return
         dir_to_player = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
         self.pos += dir_to_player
         game.main_canvas.move(self.image, dir_to_player[0], dir_to_player[1])
@@ -161,11 +165,16 @@ class Hom:
     def homnomnom(self):
         if game.player.image in game.main_canvas.find_overlapping(
             self.pos[0], self.pos[1], self.pos[0]+1, self.pos[1]+1):
-            game.game_over()
+            if not game.player.health: game.game_over()
+            else: 
+                self.death()
+                game.player.health.delete()
+                return False
+        return True
 
     def death(self):
         game.main_canvas.after_cancel(self.move_task)
-        game.hit_homs.remove(self.image)
+        if self.image in game.hit_homs: game.hit_homs.remove(self.image)
         game.main_canvas.delete(self.image)
         del self
         game.player.kill_count += 1
@@ -270,6 +279,31 @@ class Bullet:
         game.main_canvas.delete(self.image)
         del self
 
+class Health_Pixel:
+
+    def __init__(self):
+        
+        self.image = game.main_canvas.create_rectangle(
+            game.player.pos[0]+10,
+            game.player.pos[1]+16,
+            game.player.pos[0]+15,
+            game.player.pos[1]+21,
+            fill='green',
+            tags='health')
+        self.pos = game.main_canvas.coords(self.image)
+
+    def rotate(self):
+        game.main_canvas.move(self.image, game.player.dist_to_move[0], game.player.dist_to_move[1])
+        self.pos = game.main_canvas.coords(self.image)
+        x = cos((pi / game.golden_r * 5)) * (self.pos[0] - game.player.pos[0]) - sin((pi / game.golden_r * 5)) * (self.pos[1] - game.player.pos[1]) + game.player.pos[0]
+        y = sin((pi / game.golden_r * 5)) * (self.pos[0] - game.player.pos[0]) + cos((pi / game.golden_r * 5)) * (self.pos[1] - game.player.pos[1]) + game.player.pos[1]
+        game.main_canvas.move(self.image, x-self.pos[0], y-self.pos[1])
+
+    def delete(self):
+        game.main_canvas.delete(self.image)
+        game.player.health = None
+        del self
+
 def unify_vector(vector):
     if not numpy.any(vector): return vector
     return vector / (vector**2).sum()**0.5
@@ -281,6 +315,7 @@ def main():
     global game
     game = Game()
     game.player = Player()
+    game.player.health = Health_Pixel()
     Hom(100, 100, game.hom_sprite)
     Hom(200, 100, game.hom_sprite)
     game.spawn_hom()
