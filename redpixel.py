@@ -26,7 +26,7 @@ class Game:
         self.lost = False
         self.golden_r = (1 + 5 ** 0.5) / 2
         self.score_display = self.main_canvas.create_text(450, 20, text=f"KILLS:  {0} /25", fill="red", font=('Impact 12 bold'))
-        #self.imgnum = iter([str(x).zfill(4) for x in range(500)])
+        self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         #self.save_canvas()
 
     def game_over(self):
@@ -181,6 +181,7 @@ class Hom:
         game.player.kill_count += 1
         game.update_score()
         game.player.spread = game.player.kill_count // (5 if not game.final_hom else 8) + 1
+        if not game.player.health and not game.player.kill_count % 10: game.player.health = Health_Pixel()
         if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
             game.enemy_spawn_rate += 0.3
@@ -242,10 +243,10 @@ class Final_Hom:
         direction = unify_vector(game.player.pos - self.pos)
         step = direction * 5 * game.hom_speed_factor
         self.pos += step
-        if not self.flipped and numpy.dot(self.pos, direction) < 0:
+        if not self.flipped and self.pos[0] > game.player.pos[0]:
             game.main_canvas.itemconfigure(self.image, image=game.final_hom_flipped)
             self.flipped = True
-        elif self.flipped and numpy.dot(self.pos, direction) > 0:
+        elif self.flipped and self.pos[0] < game.player.pos[0]:
             game.main_canvas.itemconfigure(self.image, image=game.final_hom_sprite)
             self.flipped = False
         game.main_canvas.move(self.image, step[0], step[1])
