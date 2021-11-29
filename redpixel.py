@@ -181,7 +181,7 @@ class Hom:
         game.player.kill_count += 1
         game.update_score()
         game.player.spread = game.player.kill_count // (5 if not game.final_hom else 8) + 1
-        if game.player.kill_count == 2: game.spawn_final_hom()
+        if game.player.kill_count == 25: game.spawn_final_hom()
         if not game.final_hom:
             game.enemy_spawn_rate += 0.3
             game.hom_speed_factor += 0.06
