@@ -1,6 +1,6 @@
 import tkinter
 import numpy
-from PIL import Image, ImageTk #, ImageGrab
+from PIL import Image, ImageTk , ImageGrab
 import random
 from time import time
 from math import sin, cos, pi
@@ -14,7 +14,8 @@ class Game:
         self.main_canvas.pack(expand=1, fill='both')
         self.player_sprite = ImageTk.PhotoImage(Image.open('redpixel.png'))
         self.hom_sprite = ImageTk.PhotoImage(Image.open('hom1.png'))
-        self.final_hom_sprite = ImageTk.PhotoImage(Image.open('finalhom.png'))        
+        self.final_hom_sprite = ImageTk.PhotoImage(Image.open('finalhom.png'))
+        self.final_hom_flipped = ImageTk.PhotoImage(Image.open('finalhomflipped.png'))
         self.adjuster_sprite = ImageTk.PhotoImage(Image.open('taco.png'))
         self.enemy_spawn_rate = 1
         self.hom_speed_factor = 1
@@ -25,8 +26,8 @@ class Game:
         self.lost = False
         self.golden_r = (1 + 5 ** 0.5) / 2
         self.score_display = self.main_canvas.create_text(450, 20, text=f"KILLS:  {0} /25", fill="red", font=('Impact 12 bold'))
-        # self.imgnum = iter([str(x).zfill(4) for x in range(500)])
-        # self.save_canvas()
+        self.imgnum = iter([str(x).zfill(4) for x in range(500)])
+        #self.save_canvas()
 
     def game_over(self):
         if not self.lost:
@@ -67,8 +68,7 @@ class Game:
         y = self.main_window.winfo_rooty() + self.main_canvas.winfo_y()
         xx = x + self.main_canvas.winfo_width()
         yy = y + self.main_canvas.winfo_height()
-        #ImageGrab.grab(bbox=(x, y, xx, yy)).save(f"images\\redpixel{imgnum}.png")
-        self.main_window.after(100, self.save_canvas)
+        ImageGrab.grab(bbox=(x, y, xx, yy)).save(f"images\\redpixel{imgnum}.png")
 
     def update_score(self):
         self.main_canvas.itemconfig(self.score_display, text=f'KILLS:  {self.player.kill_count:>3} /25')
@@ -117,6 +117,7 @@ class Player:
         game.main_canvas.move(self.image, self.dist_to_move[0], self.dist_to_move[1])
         if self.moving: game.main_canvas.after_cancel(self.moving)
         if self.health: self.health.rotate()
+        #game.save_canvas()
         self.moving = game.main_canvas.after(30, self.move_player, self.dir)
 
     def up(self):
@@ -180,7 +181,7 @@ class Hom:
         game.player.kill_count += 1
         game.update_score()
         game.player.spread = game.player.kill_count // (5 if not game.final_hom else 8) + 1
-        if game.player.kill_count == 25: game.spawn_final_hom()
+        if game.player.kill_count == 2: game.spawn_final_hom()
         if not game.final_hom:
             game.enemy_spawn_rate += 0.3
             game.hom_speed_factor += 0.06
@@ -197,6 +198,7 @@ class Final_Hom:
         self.image = game.main_canvas.create_image(self.pos[0], self.pos[1], image=game.final_hom_sprite, tags='hom')
         self.health_bar = game.main_canvas.create_rectangle(175, 470, 325, 500, fill='red')
         self.hitpoints = 250
+        self.flipped = False
         self.task = self.act()
         game.enemy_spawn_rate *= 2
         game.hom_speed_factor += 0.1
@@ -237,8 +239,15 @@ class Final_Hom:
         self.health_bar = game.main_canvas.create_rectangle(self.pos[0] - 75, 470, self.pos[0] + 75-(150-self.hitpoints), 500, fill='red')
 
     def move_final_hom(self):
-        step = unify_vector(game.player.pos - self.pos) * 5 * game.hom_speed_factor
+        direction = unify_vector(game.player.pos - self.pos)
+        step = direction * 5 * game.hom_speed_factor
         self.pos += step
+        if not self.flipped and numpy.dot(self.pos, direction) < 0:
+            game.main_canvas.itemconfigure(self.image, image=game.final_hom_flipped)
+            self.flipped = True
+        elif self.flipped and numpy.dot(self.pos, direction) > 0:
+            game.main_canvas.itemconfigure(self.image, image=game.final_hom_sprite)
+            self.flipped = False
         game.main_canvas.move(self.image, step[0], step[1])
 
 class Bullet:
