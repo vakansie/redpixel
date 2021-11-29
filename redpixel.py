@@ -26,7 +26,7 @@ class Game:
         self.lost = False
         self.golden_r = (1 + 5 ** 0.5) / 2
         self.score_display = self.main_canvas.create_text(450, 20, text=f"KILLS:  {0} /25", fill="red", font=('Impact 12 bold'))
-        self.imgnum = iter([str(x).zfill(4) for x in range(500)])
+        #self.imgnum = iter([str(x).zfill(4) for x in range(500)])
         #self.save_canvas()
 
     def game_over(self):
